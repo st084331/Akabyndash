@@ -1,0 +1,15 @@
+/Users/akabynda/RiderProjects/MyPowerShell/MyPowerShell/bin/Debug/net6.0/MyPowerShell
+/Users/akabynda/RiderProjects/MyPowerShell/MyPowerShell/bin/Debug/net6.0/MyPowerShell.deps.json
+/Users/akabynda/RiderProjects/MyPowerShell/MyPowerShell/bin/Debug/net6.0/MyPowerShell.runtimeconfig.json
+/Users/akabynda/RiderProjects/MyPowerShell/MyPowerShell/bin/Debug/net6.0/MyPowerShell.dll
+/Users/akabynda/RiderProjects/MyPowerShell/MyPowerShell/bin/Debug/net6.0/MyPowerShell.pdb
+/Users/akabynda/RiderProjects/MyPowerShell/MyPowerShell/obj/Debug/net6.0/MyPowerShell.csproj.AssemblyReference.cache
+/Users/akabynda/RiderProjects/MyPowerShell/MyPowerShell/obj/Debug/net6.0/MyPowerShell.GeneratedMSBuildEditorConfig.editorconfig
+/Users/akabynda/RiderProjects/MyPowerShell/MyPowerShell/obj/Debug/net6.0/MyPowerShell.AssemblyInfoInputs.cache
+/Users/akabynda/RiderProjects/MyPowerShell/MyPowerShell/obj/Debug/net6.0/MyPowerShell.AssemblyInfo.cs
+/Users/akabynda/RiderProjects/MyPowerShell/MyPowerShell/obj/Debug/net6.0/MyPowerShell.csproj.CoreCompileInputs.cache
+/Users/akabynda/RiderProjects/MyPowerShell/MyPowerShell/obj/Debug/net6.0/MyPowerShell.dll
+/Users/akabynda/RiderProjects/MyPowerShell/MyPowerShell/obj/Debug/net6.0/refint/MyPowerShell.dll
+/Users/akabynda/RiderProjects/MyPowerShell/MyPowerShell/obj/Debug/net6.0/MyPowerShell.pdb
+/Users/akabynda/RiderProjects/MyPowerShell/MyPowerShell/obj/Debug/net6.0/MyPowerShell.genruntimeconfig.cache
+/Users/akabynda/RiderProjects/MyPowerShell/MyPowerShell/obj/Debug/net6.0/ref/MyPowerShell.dll
