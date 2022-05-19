@@ -1,3 +1,0 @@
-50
-
-The process exited, returning 0
