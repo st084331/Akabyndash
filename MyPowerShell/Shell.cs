@@ -231,10 +231,9 @@ public class Shell
         return resArgs;
     }
 
-    public int[] wcCommand(string[] args)
+    public int[] wcCommand(string path)
     {
         int[] res = new int[3];
-        string path = argsParser(args)[0];
         if (File.Exists(path))
         {
             foreach (string line in File.ReadAllLines(path))
@@ -255,20 +254,19 @@ public class Shell
         return res;
     }
 
-    public string executeFile(string path, string[] tokens, bool newOut)
+    public string executeFile(string path, string[] allArgs, bool newOut)
     {
-        string[] trueTokens = argsParser(tokens);
         string args = string.Empty;
         string verbs = string.Empty;
-        for (int i = 1; i < trueTokens.Length; i++)
+        for (int i = 1; i < allArgs.Length; i++)
         {
-            if (trueTokens[i][0] == '-')
+            if (allArgs[i][0] == '-')
             {
-                verbs += trueTokens[i] + " ";
+                verbs += allArgs[i] + " ";
             }
             else
             {
-                args += trueTokens[i] + " ";
+                args += allArgs[i] + " ";
             }
         }
 
@@ -341,35 +339,22 @@ public class Shell
         return Directory.GetCurrentDirectory();
     }
 
-    public string catCommand(string[] args)
+    public string catCommand(string path)
     {
-        string path = argsParser(args)[0];
-        if (File.Exists(path))
-        {
-            return File.ReadAllText(path);
-        }
-        else
-        {
-            return "No such file.";
-        }
+        return File.ReadAllText(path);
     }
 
     public string echoCommand(string[] args)
     {
-        string[] trueArgs = argsParser(args);
         string res = "";
-        if (trueArgs.Length > 0)
+        if (args.Length > 1)
         {
-            if (trueArgs.Length > 1)
+            for (int i = 0; i < args.Length - 1; i++)
             {
-                for (int i = 0; i < args.Length - 1; i++)
-                {
-                    res += trueArgs[i] + " ";
-                }
+                res += args[i] + " ";
             }
-
-            res += trueArgs[trueArgs.Length - 1];
         }
+        res += args[args.Length - 1];
 
         return res;
     }
@@ -433,13 +418,12 @@ public class Shell
                 }
 
                 string[] args = {tokens[1]};
-                if (File.Exists(argsParser(args)[0]))
+                string path= argsParser(args)[0];
+                if (File.Exists(path))
                 {
                     try
                     {
-                        Console.WriteLine(catCommand(args));
-
-
+                        Console.WriteLine(catCommand(path));
                         return 0;
                     }
                     catch
@@ -461,11 +445,11 @@ public class Shell
                 {
                     args[i] = tokens[i + 1];
                 }
-
                 if (args.Length > 0)
                 {
                     try
                     {
+                        args = argsParser(args);
                         Console.WriteLine(echoCommand(args));
 
 
@@ -484,10 +468,11 @@ public class Shell
             }
             else if (tokens[0] == "wc" && tokens.Length > 1)
             {
-                string[] args = new[] {tokens[1]};
+                string[] args = {tokens[1]};
+                string path = argsParser(args)[0];
                 try
                 {
-                    int[] res = wcCommand(args);
+                    int[] res = wcCommand(path);
                     if (res[0] != -1)
                     {
                         Console.WriteLine(res[0]);
@@ -510,7 +495,9 @@ public class Shell
             }
             else if (File.Exists(argsParser(tokens)[0]))
             {
-                string path = argsParser(tokens)[0];
+                string[] arg = {tokens[0]};
+                
+                string path = argsParser(arg)[0];
                 string[] ScriptCommands = File.ReadAllLines(path);
                 if (ScriptCommands.Length > 0)
                 {
@@ -522,7 +509,8 @@ public class Shell
 
                 try
                 {
-                    executeFile(path, tokens, newOut);
+                    string[] args = argsParser(tokens);
+                    executeFile(path, args, newOut);
                     return 0;
                 }
                 catch
