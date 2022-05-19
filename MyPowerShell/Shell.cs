@@ -71,51 +71,20 @@ public class Shell
                         {
                             if (locRes != 0 || locRes == 10)
                             {
-                                //Отделяем комманду от ее параметров, которые переданный в файле
-                                string[] InputCommands = OrCommand.Split("<");
-                                if (InputCommands.Length <= 2)
-                                {
-                                    if (InputCommands.Length == 2)
-                                    {
-                                        //Удаление лишних пробелов
-                                        InputCommands[1] = Regex.Replace(InputCommands[1], " {2,}", " ").Trim();
-                                        string[] inpt = new[] {InputCommands[1]};
-                                        //Если названием файла была переменная, то используем значение переменной
-                                        string trueInput = argsParser(inpt)[0];
-                                        if (trueInput == string.Empty)
-                                        {
-                                            Console.WriteLine("Empty filename.");
-                                            locRes = lastCommandUpdate(-1);
-                                            continue;
-                                        }
-
-                                        if (File.Exists(trueInput))
-                                        {
-                                            //Добавляем к комманде аргументы
-                                            InputCommands[0] += " " + InputToArgs(trueInput);
-                                        }
-                                        else
-                                        {
-                                            Console.WriteLine("No such file.");
-                                            locRes = lastCommandUpdate(-1);
-                                            continue;
-                                        }
-                                    }
-
-                                    //Переменная для указания нужна ли дозапись или перезапись
+                                //Переменная для указания нужна ли дозапись или перезапись
                                     bool writePlus = false;
                                     
                                     string[] OutputCommands = new string[] { };
                                     
                                     //Делим элементы предыдущего массива на подзадачи относительно ">>" или ">"
-                                    if (InputCommands[0].IndexOf(">>") != -1)
+                                    if (OrCommand.IndexOf(">>") != -1)
                                     {
-                                        OutputCommands = InputCommands[0].Split(">>");
+                                        OutputCommands = OrCommand.Split(">>");
                                         writePlus = true;
                                     }
                                     else
                                     {
-                                        OutputCommands = InputCommands[0].Split(">");
+                                        OutputCommands = OrCommand.Split(">");
                                     }
 
                                     if (OutputCommands.Length <= 2)
@@ -153,6 +122,36 @@ public class Shell
 
                                             outputPath = trueOutput;
                                         }
+                                        //Отделяем комманду от ее параметров, которые переданный в файле
+                                        string[] InputCommands = OutputCommands[0].Split("<");
+                                        if (InputCommands.Length <= 2)
+                                        {
+                                            if (InputCommands.Length == 2)
+                                            {
+                                                //Удаление лишних пробелов
+                                                InputCommands[1] = Regex.Replace(InputCommands[1], " {2,}", " ").Trim();
+                                                string[] inpt = new[] {InputCommands[1]};
+                                                //Если названием файла была переменная, то используем значение переменной
+                                                string trueInput = argsParser(inpt)[0];
+                                                if (trueInput == string.Empty)
+                                                {
+                                                    Console.WriteLine("Empty filename.");
+                                                    locRes = lastCommandUpdate(-1);
+                                                    continue;
+                                                }
+
+                                                if (File.Exists(trueInput))
+                                                {
+                                                    //Добавляем к комманде аргументы
+                                                    InputCommands[0] += " " + InputToArgs(trueInput);
+                                                }
+                                                else
+                                                {
+                                                    Console.WriteLine("No such file.");
+                                                    locRes = lastCommandUpdate(-1);
+                                                    continue;
+                                                }
+                                            }
 
                                         var standardOutput = new StreamWriter(Console.OpenStandardOutput());
                                         standardOutput.AutoFlush = true;
@@ -163,14 +162,14 @@ public class Shell
                                             StreamWriter sr = new StreamWriter(outputPath, writePlus);
                                             Console.SetOut(sr);
                                             newOut = true;
-                                            locRes = lastCommandUpdate(ProcessCommand(OutputCommands[0], newOut));
+                                            locRes = lastCommandUpdate(ProcessCommand(InputCommands[0], newOut));
                                             //Возвращаем консоль к стандартному значению после вывода
                                             Console.SetOut(standardOutput);
                                             sr.Close();
                                         }
                                         else
                                         {
-                                            locRes = lastCommandUpdate(ProcessCommand(OutputCommands[0], newOut));
+                                            locRes = lastCommandUpdate(ProcessCommand(InputCommands[0], newOut));
                                         }
                                     }
                                     else
