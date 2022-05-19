@@ -4,9 +4,14 @@ namespace MyPowerShell;
 
 public class Shell
 {
+    //Память реализованна в виде словаря
     private Dictionary<string, string> memory = new Dictionary<string, string>();
+    //Запоминаем последнюю комманду независимо от обновления памяти
     private int lastCommandProgress = 0;
+    //Переменная для передачи о завершении работы
+    private bool polling = true;
 
+    //Запуская оболочку в ее памяти всегда должена быть переменная $? по условия задания 
     public Shell()
     {
         memory.Add("$?", lastCommandProgress.ToString());
@@ -15,9 +20,11 @@ public class Shell
     public int ShellPolling()
     {
         string currentLine = default;
-        while (currentLine != "end")
+        //Запрашиваем от пользователя комманды
+        while (polling)
         {
             currentLine = Console.ReadLine();
+            //Парсинг строки
             ProcessLine(currentLine);
         }
 
@@ -40,6 +47,148 @@ public class Shell
         catch
         {
             return -1;
+        }
+    }
+
+    public void ProcessLine(string line)
+    {
+        if (line.Length > 0)
+        {
+            //Разделяем строку на последовательность
+            string[] BigCommands = line.Split(';');
+            foreach (var BigCommand in BigCommands)
+            {
+                int locRes = 10;
+                //Разделяем члены последовательности на подзадачи относительно "&&"
+                string[] AndCommands = BigCommand.Split("&&");
+                foreach (var AndCommand in AndCommands)
+                {
+                    if (locRes == 0 || locRes == 10)
+                    {
+                        //Делим элементы предыдущего массива на подзадачи относительно "||"
+                        string[] OrCommands = AndCommand.Split("||");
+                        foreach (var OrCommand in OrCommands)
+                        {
+                            if (locRes != 0 || locRes == 10)
+                            {
+                                //Отделяем комманду от ее параметров, которые переданный в файле
+                                string[] InputCommands = OrCommand.Split("<");
+                                if (InputCommands.Length <= 2)
+                                {
+                                    if (InputCommands.Length == 2)
+                                    {
+                                        //Удаление лишних пробелов
+                                        InputCommands[1] = Regex.Replace(InputCommands[1], " {2,}", " ").Trim();
+                                        string[] inpt = new[] {InputCommands[1]};
+                                        //Если названием файла была переменная, то используем значение переменной
+                                        string trueInput = argsParser(inpt)[0];
+                                        if (trueInput == string.Empty)
+                                        {
+                                            Console.WriteLine("Empty filename.");
+                                            locRes = lastCommandUpdate(-1);
+                                            continue;
+                                        }
+
+                                        if (File.Exists(trueInput))
+                                        {
+                                            //Добавляем к комманде аргументы
+                                            InputCommands[0] += " " + InputToArgs(trueInput);
+                                        }
+                                        else
+                                        {
+                                            Console.WriteLine("No such file.");
+                                            locRes = lastCommandUpdate(-1);
+                                            continue;
+                                        }
+                                    }
+
+                                    //Переменная для указания нужна ли дозапись или перезапись
+                                    bool writePlus = false;
+                                    
+                                    string[] OutputCommands = new string[] { };
+                                    
+                                    //Делим элементы предыдущего массива на подзадачи относительно ">>" или ">"
+                                    if (InputCommands[0].IndexOf(">>") != -1)
+                                    {
+                                        OutputCommands = InputCommands[0].Split(">>");
+                                        writePlus = true;
+                                    }
+                                    else
+                                    {
+                                        OutputCommands = InputCommands[0].Split(">");
+                                    }
+
+                                    if (OutputCommands.Length <= 2)
+                                    {
+                                        string outputPath = string.Empty;
+                                        if (OutputCommands.Length == 2)
+                                        {
+                                            //Удаление лишних пробелов
+                                            OutputCommands[1] = Regex.Replace(OutputCommands[1], " {2,}", " ").Trim();
+                                            string[] inpt = new[] {OutputCommands[1]};
+                                            //Если названием файла была переменная, то используем значение переменной
+                                            string trueOutput = argsParser(inpt)[0];
+                                            if (trueOutput == string.Empty)
+                                            {
+                                                Console.WriteLine("Empty filename.");
+                                                locRes = lastCommandUpdate(-1);
+                                                continue;
+                                            }
+
+                                            if (!File.Exists(trueOutput))
+                                            {
+                                                try
+                                                {
+                                                    //Создаем файл для записи, если его не было
+                                                    FileStream fs = File.Create(trueOutput);
+                                                    fs.Close();
+                                                }
+                                                catch
+                                                {
+                                                    Console.WriteLine("Incorrect filename.");
+                                                    locRes = lastCommandUpdate(-1);
+                                                    continue;
+                                                }
+                                            }
+
+                                            outputPath = trueOutput;
+                                        }
+
+                                        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
+                                        standardOutput.AutoFlush = true;
+                                        bool newOut = false;
+                                        if (outputPath != string.Empty && File.Exists(outputPath))
+                                        {
+                                            //Если указан файл вывода, то меняем Out
+                                            StreamWriter sr = new StreamWriter(outputPath, writePlus);
+                                            Console.SetOut(sr);
+                                            newOut = true;
+                                            locRes = lastCommandUpdate(ProcessCommand(OutputCommands[0], newOut));
+                                            //Возвращаем консоль к стандартному значению после вывода
+                                            Console.SetOut(standardOutput);
+                                            sr.Close();
+                                        }
+                                        else
+                                        {
+                                            locRes = lastCommandUpdate(ProcessCommand(OutputCommands[0], newOut));
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine("Unknown expression.");
+                                        locRes = lastCommandUpdate(-1);
+                                    }
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Unknown expression.");
+                                    locRes = lastCommandUpdate(-1);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -226,130 +375,6 @@ public class Shell
         }
     }
 
-    public void ProcessLine(string line)
-    {
-        if (line.Length > 0)
-        {
-            string[] BigCommands = line.Split(';');
-            foreach (var BigCommand in BigCommands)
-            {
-                int locRes = 10;
-                string[] AndCommands = BigCommand.Split("&&");
-                foreach (var AndCommand in AndCommands)
-                {
-                    if (locRes == 0 || locRes == 10)
-                    {
-                        string[] OrCommands = AndCommand.Split("||");
-                        foreach (var OrCommand in OrCommands)
-                        {
-                            if (locRes != 0 || locRes == 10)
-                            {
-                                string[] InputCommands = OrCommand.Split("<");
-                                if (InputCommands.Length <= 2)
-                                {
-                                    if (InputCommands.Length == 2)
-                                    {
-                                        InputCommands[1] = Regex.Replace(InputCommands[1], " {2,}", " ").Trim();
-                                        string[] inpt = new[] {InputCommands[1]};
-                                        string trueInput = argsParser(inpt)[0];
-                                        if (trueInput == string.Empty)
-                                        {
-                                            Console.WriteLine("Empty filename.");
-                                            locRes = lastCommandUpdate(-1);
-                                            continue;
-                                        }
-
-                                        if (File.Exists(trueInput))
-                                        {
-                                            InputCommands[0] += " " + InputToArgs(trueInput);
-                                        }
-                                        else
-                                        {
-                                            Console.WriteLine("No such file.");
-                                            locRes = lastCommandUpdate(-1);
-                                            continue;
-                                        }
-                                    }
-
-                                    bool writePlus = false;
-                                    string[] OutputCommands = new string[] { };
-                                    if (InputCommands[0].IndexOf(">>") != -1)
-                                    {
-                                        OutputCommands = InputCommands[0].Split(">>");
-                                        writePlus = true;
-                                    }
-                                    else
-                                    {
-                                        OutputCommands = InputCommands[0].Split(">");
-                                    }
-
-                                    if (OutputCommands.Length <= 2)
-                                    {
-                                        string outputPath = string.Empty;
-                                        if (OutputCommands.Length == 2)
-                                        {
-                                            OutputCommands[1] = Regex.Replace(OutputCommands[1], " {2,}", " ").Trim();
-                                            string[] inpt = new[] {OutputCommands[1]};
-                                            string trueOutput = argsParser(inpt)[0];
-                                            if (trueOutput == string.Empty)
-                                            {
-                                                Console.WriteLine("Empty filename.");
-                                                locRes = lastCommandUpdate(-1);
-                                                continue;
-                                            }
-
-                                            if (!File.Exists(trueOutput))
-                                            {
-                                                try
-                                                {
-                                                    FileStream fs = File.Create(trueOutput);
-                                                    fs.Close();
-                                                }
-                                                catch
-                                                {
-                                                    Console.WriteLine("Incorrect filename.");
-                                                    locRes = lastCommandUpdate(-1);
-                                                    continue;
-                                                }
-                                            }
-
-                                            outputPath = trueOutput;
-                                        }
-                                        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-                                        standardOutput.AutoFlush = true;
-                                        bool newOut = false;
-                                        if (outputPath != string.Empty && File.Exists(outputPath))
-                                        {
-                                            StreamWriter sr = new StreamWriter(outputPath, writePlus);
-                                            Console.SetOut(sr);
-                                            newOut = true;
-                                            locRes = lastCommandUpdate(ProcessCommand(OutputCommands[0], newOut));
-                                            Console.SetOut(standardOutput);
-                                            sr.Close();
-                                        }
-                                        else
-                                        {
-                                            locRes = lastCommandUpdate(ProcessCommand(OutputCommands[0], newOut));
-                                        }
-                                    }
-                                    else
-                                    {
-                                        Console.WriteLine("Unknown expression.");
-                                        locRes = lastCommandUpdate(-1);
-                                    }
-                                }
-                                else
-                                {
-                                    Console.WriteLine("Unknown expression.");
-                                    locRes = lastCommandUpdate(-1);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     public int ProcessCommand(string command, bool newOut)
     {
@@ -495,7 +520,7 @@ public class Shell
 
                     try
                     {
-                        Console.WriteLine("The process exited, returning " + executeFile(path, tokens, newOut));
+                        executeFile(path, tokens, newOut);
                         return 0;
                     }
                     catch
@@ -504,14 +529,18 @@ public class Shell
                         return -1;
                     }
                 }
-                else if (tokens[0] != "end")
+                else if (tokens[0] == "end")
+                {
+                    polling = false;
+                    return 0;
+                }
+                else
                 {
                     Console.WriteLine("Error! Unknown command!");
                     return -1;
                 }
             }
         }
-
         return 0;
     }
 }
