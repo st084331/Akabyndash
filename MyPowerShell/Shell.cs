@@ -72,23 +72,34 @@ public class Shell
                             if (locRes != 0 || locRes == 10)
                             {
                                 //Переменная для указания нужна ли дозапись или перезапись
-                                    bool writePlus = false;
-                                    
-                                    string[] OutputCommands = new string[] { };
-                                    
-                                    //Делим элементы предыдущего массива на подзадачи относительно ">>" или ">"
-                                    if (OrCommand.IndexOf(">>") != -1)
-                                    {
-                                        OutputCommands = OrCommand.Split(">>");
-                                        writePlus = true;
-                                    }
-                                    else
-                                    {
-                                        OutputCommands = OrCommand.Split(">");
-                                    }
+                                bool writePlus = false;
 
-                                    if (OutputCommands.Length <= 2)
+                                string[] OutputCommands = new string[] { };
+
+                                //Делим элементы предыдущего массива на подзадачи относительно ">>" или ">"
+                                if (OrCommand.IndexOf(">>") != -1)
+                                {
+                                    OutputCommands = OrCommand.Split(">>");
+                                    writePlus = true;
+                                }
+                                else
+                                {
+                                    OutputCommands = OrCommand.Split(">");
+                                }
+
+                                if (OutputCommands.Length <= 2 && OutputCommands.Length > 0)
+                                {
+                                    //Отделяем комманду от ее параметров, которые переданный в файле
+                                    string[] InputCommands = OutputCommands[0].Split("<");
+                                    if (InputCommands.Length <= 2 && InputCommands.Length > 0)
                                     {
+                                        InputCommands[0] = Regex.Replace(InputCommands[0], " {2,}", " ").Trim();
+                                        if (InputCommands[0] == String.Empty || InputCommands[0] == " ")
+                                        {
+                                            locRes = lastCommandUpdate(0);
+                                            continue;  
+                                        }
+
                                         string outputPath = string.Empty;
                                         if (OutputCommands.Length == 2)
                                         {
@@ -122,36 +133,33 @@ public class Shell
 
                                             outputPath = trueOutput;
                                         }
-                                        //Отделяем комманду от ее параметров, которые переданный в файле
-                                        string[] InputCommands = OutputCommands[0].Split("<");
-                                        if (InputCommands.Length <= 2)
+                                        
+                                        if (InputCommands.Length == 2)
                                         {
-                                            if (InputCommands.Length == 2)
+                                            //Удаление лишних пробелов
+                                            InputCommands[1] = Regex.Replace(InputCommands[1], " {2,}", " ").Trim();
+                                            string[] inpt = new[] {InputCommands[1]};
+                                            //Если названием файла была переменная, то используем значение переменной
+                                            string trueInput = argsParser(inpt)[0];
+                                            if (trueInput == string.Empty)
                                             {
-                                                //Удаление лишних пробелов
-                                                InputCommands[1] = Regex.Replace(InputCommands[1], " {2,}", " ").Trim();
-                                                string[] inpt = new[] {InputCommands[1]};
-                                                //Если названием файла была переменная, то используем значение переменной
-                                                string trueInput = argsParser(inpt)[0];
-                                                if (trueInput == string.Empty)
-                                                {
-                                                    Console.WriteLine("Empty filename.");
-                                                    locRes = lastCommandUpdate(-1);
-                                                    continue;
-                                                }
-
-                                                if (File.Exists(trueInput))
-                                                {
-                                                    //Добавляем к комманде аргументы
-                                                    InputCommands[0] += " " + InputToArgs(trueInput);
-                                                }
-                                                else
-                                                {
-                                                    Console.WriteLine("No such file.");
-                                                    locRes = lastCommandUpdate(-1);
-                                                    continue;
-                                                }
+                                                Console.WriteLine("Empty filename.");
+                                                locRes = lastCommandUpdate(-1);
+                                                continue;
                                             }
+
+                                            if (File.Exists(trueInput))
+                                            {
+                                                //Добавляем к комманде аргументы
+                                                InputCommands[0] += " " + InputToArgs(trueInput);
+                                            }
+                                            else
+                                            {
+                                                Console.WriteLine("No such file.");
+                                                locRes = lastCommandUpdate(-1);
+                                                continue;
+                                            }
+                                        }
 
                                         var standardOutput = new StreamWriter(Console.OpenStandardOutput());
                                         standardOutput.AutoFlush = true;
@@ -263,7 +271,7 @@ public class Shell
                 args += trueTokens[i] + " ";
             }
         }
-        
+
         using (System.Diagnostics.Process process = new System.Diagnostics.Process())
         {
             process.StartInfo.FileName = path;
@@ -374,44 +382,58 @@ public class Shell
         }
     }
 
-
     public int ProcessCommand(string command, bool newOut)
     {
-        if (command.Length > 0)
+        string[] tokens = command.Split(' ');
+        if (tokens.Length > 0)
         {
-            command = Regex.Replace(command, " {2,}", " ").Trim();
-            if (command == " " || command.Length < 1)
+            if (tokens[0][0] == '$' && tokens.Length == 1)
+            {
+                return moneyCommand(tokens[0]);
+            }
+            else if (tokens[0] == "true" && tokens.Length == 1)
             {
                 return 0;
             }
 
-            string[] tokens = command.Split(' ');
-            if (tokens.Length > 0)
+            else if (tokens[0] == "false" && tokens.Length == 1)
             {
-                if (tokens[0][0] == '$' && tokens.Length == 1)
+                return -1;
+            }
+
+            else if (tokens[0] == "pwd")
+            {
+                if (tokens.Length > 1)
                 {
-                    return moneyCommand(tokens[0]);
+                    Console.WriteLine("Warning! Command pwd requires no arguments.");
                 }
-                else if (tokens[0] == "true" && tokens.Length == 1)
+
+                try
                 {
+                    Console.WriteLine(pwdCommand());
+
+
                     return 0;
                 }
-
-                else if (tokens[0] == "false" && tokens.Length == 1)
+                catch
                 {
+                    Console.WriteLine("Can not execute this command.");
                     return -1;
                 }
-
-                else if (tokens[0] == "pwd")
+            }
+            else if (tokens[0] == "cat" && tokens.Length >= 2)
+            {
+                if (tokens.Length > 2)
                 {
-                    if (tokens.Length > 1)
-                    {
-                        Console.WriteLine("Warning! Command pwd requires no arguments.");
-                    }
+                    Console.WriteLine("Warning! Command cat requires only one argument.");
+                }
 
+                string[] args = {tokens[1]};
+                if (File.Exists(argsParser(args)[0]))
+                {
                     try
                     {
-                        Console.WriteLine(pwdCommand());
+                        Console.WriteLine(catCommand(args));
 
 
                         return 0;
@@ -422,28 +444,53 @@ public class Shell
                         return -1;
                     }
                 }
-                else if (tokens[0] == "cat" && tokens.Length >= 2)
+                else
                 {
-                    if (tokens.Length > 2)
+                    Console.WriteLine("No such file.");
+                    return -1;
+                }
+            }
+            else if (tokens[0] == "echo")
+            {
+                string[] args = new string[tokens.Length - 1];
+                for (int i = 0; i < args.Length; i++)
+                {
+                    args[i] = tokens[i + 1];
+                }
+
+                if (args.Length > 0)
+                {
+                    try
                     {
-                        Console.WriteLine("Warning! Command cat requires only one argument.");
+                        Console.WriteLine(echoCommand(args));
+
+
+                        return 0;
                     }
-
-                    string[] args = {tokens[1]};
-                    if (File.Exists(argsParser(args)[0]))
+                    catch
                     {
-                        try
-                        {
-                            Console.WriteLine(catCommand(args));
+                        Console.WriteLine("Can not execute this command.");
+                        return -1;
+                    }
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            else if (tokens[0] == "wc" && tokens.Length > 1)
+            {
+                string[] args = new[] {tokens[1]};
+                try
+                {
+                    int[] res = wcCommand(args);
+                    if (res[0] != -1)
+                    {
+                        Console.WriteLine(res[0]);
+                        Console.WriteLine(res[1]);
+                        Console.WriteLine(res[2]);
 
-
-                            return 0;
-                        }
-                        catch
-                        {
-                            Console.WriteLine("Can not execute this command.");
-                            return -1;
-                        }
+                        return 0;
                     }
                     else
                     {
@@ -451,95 +498,47 @@ public class Shell
                         return -1;
                     }
                 }
-                else if (tokens[0] == "echo")
+                catch
                 {
-                    string[] args = new string[tokens.Length - 1];
-                    for (int i = 0; i < args.Length; i++)
-                    {
-                        args[i] = tokens[i + 1];
-                    }
-
-                    if (args.Length > 0)
-                    {
-                        try
-                        {
-                            Console.WriteLine(echoCommand(args));
-
-
-                            return 0;
-                        }
-                        catch
-                        {
-                            Console.WriteLine("Can not execute this command.");
-                            return -1;
-                        }
-                    }
-                    else
-                    {
-                        return 0;
-                    }
-                }
-                else if (tokens[0] == "wc" && tokens.Length > 1)
-                {
-                    string[] args = new[] {tokens[1]};
-                    try
-                    {
-                        int[] res = wcCommand(args);
-                        if (res[0] != -1)
-                        {
-                            Console.WriteLine(res[0]);
-                            Console.WriteLine(res[1]);
-                            Console.WriteLine(res[2]);
-
-                            return 0;
-                        }
-                        else
-                        {
-                            Console.WriteLine("No such file.");
-                            return -1;
-                        }
-                    }
-                    catch
-                    {
-                        Console.WriteLine("Can not execute this command.");
-                        return -1;
-                    }
-                }
-                else if (File.Exists(argsParser(tokens)[0]))
-                {
-                    string path = argsParser(tokens)[0];
-                    string[] ScriptCommands = File.ReadAllLines(path);
-                    if (ScriptCommands.Length > 0)
-                    {
-                        if (ScriptCommands[0] == "Akabyndash")
-                        {
-                            return ShellScriptProcess(path);
-                        }
-                    }
-
-                    try
-                    {
-                        executeFile(path, tokens, newOut);
-                        return 0;
-                    }
-                    catch
-                    {
-                        Console.WriteLine("Can not execute file.");
-                        return -1;
-                    }
-                }
-                else if (tokens[0] == "end")
-                {
-                    polling = false;
-                    return 0;
-                }
-                else
-                {
-                    Console.WriteLine("Error! Unknown command!");
+                    Console.WriteLine("Can not execute this command.");
                     return -1;
                 }
             }
+            else if (File.Exists(argsParser(tokens)[0]))
+            {
+                string path = argsParser(tokens)[0];
+                string[] ScriptCommands = File.ReadAllLines(path);
+                if (ScriptCommands.Length > 0)
+                {
+                    if (ScriptCommands[0] == "Akabyndash")
+                    {
+                        return ShellScriptProcess(path);
+                    }
+                }
+
+                try
+                {
+                    executeFile(path, tokens, newOut);
+                    return 0;
+                }
+                catch
+                {
+                    Console.WriteLine("Can not execute file.");
+                    return -1;
+                }
+            }
+            else if (tokens[0] == "end")
+            {
+                polling = false;
+                return 0;
+            }
+            else
+            {
+                Console.WriteLine("Error! Unknown command!");
+                return -1;
+            }
         }
+
         return 0;
     }
 }
