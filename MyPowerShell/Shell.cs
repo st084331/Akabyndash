@@ -93,6 +93,7 @@ public class Shell
                                     string[] InputCommands = OutputCommands[0].Split("<");
                                     if (InputCommands.Length <= 2 && InputCommands.Length > 0)
                                     {
+                                        //Проверка есть ли какая-нибудь комманда?
                                         InputCommands[0] = Regex.Replace(InputCommands[0], " {2,}", " ").Trim();
                                         if (InputCommands[0] == String.Empty || InputCommands[0] == " ")
                                         {
@@ -201,6 +202,7 @@ public class Shell
 
     public int lastCommandUpdate(int res)
     {
+        //Обновляем значение переменной в памяти и поле класса
         lastCommandProgress = res;
         memory["$?"] = lastCommandProgress.ToString();
         return lastCommandProgress;
@@ -208,6 +210,7 @@ public class Shell
 
     public string[] argsParser(string[] args)
     {
+        //набор аргументов преобразуем в набор, где раскрыты все переменные
         string[] resArgs = new string[args.Length];
         for (int i = 0; i < args.Length; i++)
         {
@@ -234,14 +237,12 @@ public class Shell
         string path = argsParser(args)[0];
         if (File.Exists(path))
         {
-            int sum = 0;
-            foreach (var line in File.ReadAllLines(path))
+            foreach (string line in File.ReadAllLines(path))
             {
-                sum += line.Split(' ').Length;
+                //Удаление лишних пробелов, так как считаем слова
+                res[1] += Regex.Replace(line, " {2,}", " ").Trim().Split(' ').Length;
+                res[0]++;
             }
-
-            res[0] = File.ReadAllLines(path).Length;
-            res[1] = sum;
             res[2] = File.ReadAllBytes(path).Length;
         }
         else
@@ -259,7 +260,6 @@ public class Shell
         string[] trueTokens = argsParser(tokens);
         string args = string.Empty;
         string verbs = string.Empty;
-
         for (int i = 1; i < trueTokens.Length; i++)
         {
             if (trueTokens[i][0] == '-')
@@ -278,7 +278,6 @@ public class Shell
             process.StartInfo.Arguments = args;
             process.StartInfo.Verb = verbs;
             process.StartInfo.UseShellExecute = !newOut;
-
             process.StartInfo.RedirectStandardOutput = newOut;
             process.StartInfo.RedirectStandardError = newOut;
             process.Start();
@@ -299,20 +298,25 @@ public class Shell
     public int moneyCommand(string token)
     {
         int assignmentIndex = token.IndexOf('=');
+        //Присутствует ли приравнивание
         if (assignmentIndex != token.Length - 1 && assignmentIndex != -1)
         {
-            string[] args = argsParser(token.Split('='));
-            if (args.Length == 2)
+            string[] tokens = token.Split('=');
+            if (tokens.Length == 2)
             {
+                string value = argsParser(tokens)[1];
+                string variable = tokens[0];
                 try
                 {
-                    if (memory.ContainsKey(args[0]))
+                    //Изменяем значение переменной, если уже созданна
+                    if (memory.ContainsKey(variable))
                     {
-                        memory[args[0]] = args[1];
+                        memory[variable] = value;
                     }
+                    //Добавляем переменную в память, если не созданна
                     else
                     {
-                        memory.Add(args[0], args[1]);
+                        memory.Add(variable, value);
                     }
 
                     return 0;
