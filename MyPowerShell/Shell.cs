@@ -253,15 +253,15 @@ public class Shell
         string args = string.Empty;
         string verbs = string.Empty;
 
-        for (int i = 1; i < tokens.Length; i++)
+        for (int i = 1; i < trueTokens.Length; i++)
         {
-            if (tokens[i][0] == '-')
+            if (trueTokens[i][0] == '-')
             {
-                verbs += tokens[i] + " ";
+                verbs += trueTokens[i] + " ";
             }
             else
             {
-                args += tokens[i] + " ";
+                args += trueTokens[i] + " ";
             }
         }
         
