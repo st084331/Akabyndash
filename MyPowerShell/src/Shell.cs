@@ -11,6 +11,35 @@ public class Shell
     //Переменная для передачи о завершении работы
     private bool polling = true;
 
+    public Dictionary<string, string> getMemory()
+    {
+        return memory;
+    }
+    
+    public void addToMemory(string variable, string value)
+    {
+        //Изменяем значение переменной, если уже созданна
+        if (memory.ContainsKey(variable))
+        {
+            memory[variable] = value;
+        }
+        //Добавляем переменную в память, если не созданна
+        else
+        {
+            memory.Add(variable, value);
+        }
+    }
+
+    public int getLastCommandProgress()
+    {
+        return lastCommandProgress;
+    }
+
+    public bool getPolling()
+    {
+        return polling;
+    }
+    
     //Запуская оболочку в ее памяти всегда должена быть переменная $? по условия задания 
     public Shell()
     {
@@ -306,17 +335,7 @@ public class Shell
                 string variable = tokens[0];
                 try
                 {
-                    //Изменяем значение переменной, если уже созданна
-                    if (memory.ContainsKey(variable))
-                    {
-                        memory[variable] = value;
-                    }
-                    //Добавляем переменную в память, если не созданна
-                    else
-                    {
-                        memory.Add(variable, value);
-                    }
-
+                    addToMemory(variable, value);
                     return 0;
                 }
                 catch
@@ -376,6 +395,7 @@ public class Shell
         string[] tokens = command.Split(' ');
         if (tokens.Length > 0)
         {
+            //Это переменная?
             if (tokens[0][0] == '$' && tokens.Length == 1)
             {
                 return moneyCommand(tokens[0]);
@@ -475,8 +495,11 @@ public class Shell
                     int[] res = wcCommand(path);
                     if (res[0] != -1)
                     {
+                        //строки
                         Console.WriteLine(res[0]);
+                        //слова - набор символов, разделенных пробелами
                         Console.WriteLine(res[1]);
+                        //байты
                         Console.WriteLine(res[2]);
 
                         return 0;
@@ -501,6 +524,7 @@ public class Shell
                 string[] ScriptCommands = File.ReadAllLines(path);
                 if (ScriptCommands.Length > 0)
                 {
+                    //Первая строка скрипта это Akabyndash
                     if (ScriptCommands[0] == "Akabyndash")
                     {
                         return ShellScriptProcess(path);
@@ -508,7 +532,8 @@ public class Shell
                 }
 
                 try
-                {
+                { 
+                    //Если не скрипт, то запускаем файл
                     string[] args = argsParser(tokens);
                     executeFile(path, args, newOut);
                     return 0;
@@ -519,6 +544,7 @@ public class Shell
                     return -1;
                 }
             }
+            //end комманда для завершения оболочки
             else if (tokens[0] == "end")
             {
                 polling = false;
