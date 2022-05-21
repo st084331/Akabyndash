@@ -16,7 +16,7 @@ public class Shell
         return memory;
     }
     
-    public void addToMemory(string variable, string value)
+    public void addToMemoryOrUpdate(string variable, string value)
     {
         //Изменяем значение переменной, если уже созданна
         if (memory.ContainsKey(variable))
@@ -79,155 +79,167 @@ public class Shell
         }
     }
 
+    
     public void ProcessLine(string line)
     {
         if (line.Length > 0)
         {
+            line = Regex.Replace(line, " {2,}", " ").Trim();
             //Разделяем строку на последовательность
-            string[] BigCommands = line.Split(';');
-            foreach (var BigCommand in BigCommands)
+            string[] woConnectorsCommands = Regex.Split(line, @"(;)|(&&)|(\|\|)");
+            bool skipNext = false;
+            foreach (var commandWithRedicters in woConnectorsCommands)
             {
-                int locRes = 10;
-                //Разделяем члены последовательности на подзадачи относительно "&&"
-                string[] AndCommands = BigCommand.Split("&&");
-                foreach (var AndCommand in AndCommands)
+                if (commandWithRedicters == "&&" || commandWithRedicters == "||" || commandWithRedicters == ";")
                 {
-                    if (locRes == 0 || locRes == 10)
+                    if ((commandWithRedicters == "&&" && lastCommandProgress != 0) ||
+                        (commandWithRedicters == "||" && lastCommandProgress == 0))
                     {
-                        //Делим элементы предыдущего массива на подзадачи относительно "||"
-                        string[] OrCommands = AndCommand.Split("||");
-                        foreach (var OrCommand in OrCommands)
+                        //Пропускаем следующую команду, она будет защитана как неудачно завершенная
+                        lastCommandUpdate(-1);
+                        skipNext = true;
+                    }
+                    else
+                    {
+                        skipNext = false;
+                    }
+                    continue;
+                }
+                else if (!skipNext)
+                {
+                    //Переменная для указания нужна ли дозапись или перезапись
+                    bool writePlus = false;
+
+                    string[] OutputCommands = new string[] { };
+
+                    //Делим элементы предыдущего массива на подзадачи относительно ">>" или ">"
+                    if (commandWithRedicters.IndexOf(">>") != -1)
+                    {
+                        OutputCommands = commandWithRedicters.Split(">>");
+                        writePlus = true;
+                    }
+                    else
+                    {
+                        OutputCommands = commandWithRedicters.Split(">");
+                    }
+
+                    if (OutputCommands.Length <= 2 && OutputCommands.Length > 0)
+                    {
+                        //Отделяем комманду от ее параметров, которые переданный в файле
+                        string[] InputCommands = OutputCommands[0].Split("<");
+                        if (InputCommands.Length <= 2 && InputCommands.Length > 0)
                         {
-                            if (locRes != 0 || locRes == 10)
+                            //Проверка есть ли какая-нибудь комманда?
+                            InputCommands[0] = Regex.Replace(InputCommands[0], " {2,}", " ").Trim();
+                            if (InputCommands[0] == String.Empty || InputCommands[0] == " ")
                             {
-                                //Переменная для указания нужна ли дозапись или перезапись
-                                bool writePlus = false;
+                                lastCommandUpdate(0);
+                                continue;
+                            }
 
-                                string[] OutputCommands = new string[] { };
-
-                                //Делим элементы предыдущего массива на подзадачи относительно ">>" или ">"
-                                if (OrCommand.IndexOf(">>") != -1)
+                            string outputPath = string.Empty;
+                            if (OutputCommands.Length == 2)
+                            {
+                                //Удаление лишних пробелов
+                                OutputCommands[1] = Regex.Replace(OutputCommands[1], " {2,}", " ").Trim();
+                                string[] inpt = new[] {OutputCommands[1]};
+                                //Если названием файла была переменная, то используем значение переменной
+                                string trueOutput = argsParser(inpt)[0];
+                                if (trueOutput == string.Empty)
                                 {
-                                    OutputCommands = OrCommand.Split(">>");
-                                    writePlus = true;
+                                    Console.WriteLine("Empty filename.");
+                                    lastCommandUpdate(-1);
+                                    continue;
+                                }
+
+                                if (!File.Exists(trueOutput))
+                                {
+                                    try
+                                    {
+                                        //Создаем файл для записи, если его не было
+                                        FileStream fs = File.Create(trueOutput);
+                                        fs.Close();
+                                    }
+                                    catch
+                                    {
+                                        Console.WriteLine("Incorrect filename.");
+                                        lastCommandUpdate(-1);
+                                        continue;
+                                    }
+                                }
+
+                                outputPath = trueOutput;
+                            }
+
+                            if (InputCommands.Length == 2)
+                            {
+                                //Удаление лишних пробелов
+                                InputCommands[1] = Regex.Replace(InputCommands[1], " {2,}", " ").Trim();
+                                string[] inpt = new[] {InputCommands[1]};
+                                //Если названием файла была переменная, то используем значение переменной
+                                string trueInput = argsParser(inpt)[0];
+                                if (trueInput == string.Empty)
+                                {
+                                    Console.WriteLine("Empty filename.");
+                                    lastCommandUpdate(-1);
+                                    continue;
+                                }
+
+                                if (File.Exists(trueInput))
+                                {
+                                    //Добавляем к комманде аргументы
+                                    InputCommands[0] += " " + InputToArgs(trueInput);
                                 }
                                 else
                                 {
-                                    OutputCommands = OrCommand.Split(">");
-                                }
-
-                                if (OutputCommands.Length <= 2 && OutputCommands.Length > 0)
-                                {
-                                    //Отделяем комманду от ее параметров, которые переданный в файле
-                                    string[] InputCommands = OutputCommands[0].Split("<");
-                                    if (InputCommands.Length <= 2 && InputCommands.Length > 0)
-                                    {
-                                        //Проверка есть ли какая-нибудь комманда?
-                                        InputCommands[0] = Regex.Replace(InputCommands[0], " {2,}", " ").Trim();
-                                        if (InputCommands[0] == String.Empty || InputCommands[0] == " ")
-                                        {
-                                            locRes = lastCommandUpdate(0);
-                                            continue;  
-                                        }
-
-                                        string outputPath = string.Empty;
-                                        if (OutputCommands.Length == 2)
-                                        {
-                                            //Удаление лишних пробелов
-                                            OutputCommands[1] = Regex.Replace(OutputCommands[1], " {2,}", " ").Trim();
-                                            string[] inpt = new[] {OutputCommands[1]};
-                                            //Если названием файла была переменная, то используем значение переменной
-                                            string trueOutput = argsParser(inpt)[0];
-                                            if (trueOutput == string.Empty)
-                                            {
-                                                Console.WriteLine("Empty filename.");
-                                                locRes = lastCommandUpdate(-1);
-                                                continue;
-                                            }
-
-                                            if (!File.Exists(trueOutput))
-                                            {
-                                                try
-                                                {
-                                                    //Создаем файл для записи, если его не было
-                                                    FileStream fs = File.Create(trueOutput);
-                                                    fs.Close();
-                                                }
-                                                catch
-                                                {
-                                                    Console.WriteLine("Incorrect filename.");
-                                                    locRes = lastCommandUpdate(-1);
-                                                    continue;
-                                                }
-                                            }
-
-                                            outputPath = trueOutput;
-                                        }
-                                        
-                                        if (InputCommands.Length == 2)
-                                        {
-                                            //Удаление лишних пробелов
-                                            InputCommands[1] = Regex.Replace(InputCommands[1], " {2,}", " ").Trim();
-                                            string[] inpt = new[] {InputCommands[1]};
-                                            //Если названием файла была переменная, то используем значение переменной
-                                            string trueInput = argsParser(inpt)[0];
-                                            if (trueInput == string.Empty)
-                                            {
-                                                Console.WriteLine("Empty filename.");
-                                                locRes = lastCommandUpdate(-1);
-                                                continue;
-                                            }
-
-                                            if (File.Exists(trueInput))
-                                            {
-                                                //Добавляем к комманде аргументы
-                                                InputCommands[0] += " " + InputToArgs(trueInput);
-                                            }
-                                            else
-                                            {
-                                                Console.WriteLine("No such file.");
-                                                locRes = lastCommandUpdate(-1);
-                                                continue;
-                                            }
-                                        }
-
-                                        var standardOutput = new StreamWriter(Console.OpenStandardOutput());
-                                        standardOutput.AutoFlush = true;
-                                        bool newOut = false;
-                                        if (outputPath != string.Empty && File.Exists(outputPath))
-                                        {
-                                            //Если указан файл вывода, то меняем Out
-                                            StreamWriter sr = new StreamWriter(outputPath, writePlus);
-                                            Console.SetOut(sr);
-                                            newOut = true;
-                                            locRes = lastCommandUpdate(ProcessCommand(InputCommands[0], newOut));
-                                            //Возвращаем консоль к стандартному значению после вывода
-                                            Console.SetOut(standardOutput);
-                                            sr.Close();
-                                        }
-                                        else
-                                        {
-                                            locRes = lastCommandUpdate(ProcessCommand(InputCommands[0], newOut));
-                                        }
-                                    }
-                                    else
-                                    {
-                                        Console.WriteLine("Unknown expression.");
-                                        locRes = lastCommandUpdate(-1);
-                                    }
-                                }
-                                else
-                                {
-                                    Console.WriteLine("Unknown expression.");
-                                    locRes = lastCommandUpdate(-1);
+                                    Console.WriteLine("No such file.");
+                                    lastCommandUpdate(-1);
+                                    continue;
                                 }
                             }
+
+                            var standardOutput = new StreamWriter(Console.OpenStandardOutput());
+                            standardOutput.AutoFlush = true;
+                            bool newOut = false;
+                            if (outputPath != string.Empty && File.Exists(outputPath))
+                            {
+                                //Если указан файл вывода, то меняем Out
+                                StreamWriter sr = new StreamWriter(outputPath, writePlus);
+                                Console.SetOut(sr);
+                                newOut = true;
+                                lastCommandUpdate(ProcessCommand(InputCommands[0], newOut));
+                                //Возвращаем консоль к стандартному значению после вывода
+                                Console.SetOut(standardOutput);
+                                sr.Close();
+                            }
+                            else
+                            {
+                                lastCommandUpdate(ProcessCommand(InputCommands[0], newOut));
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Unknown expression.");
+                            lastCommandUpdate(-1);
                         }
                     }
+                    else
+                    {
+                        Console.WriteLine("Unknown expression.");
+                        lastCommandUpdate(-1);
+                    }
+                }
+                else
+                {
+                    skipNext = false;
                 }
             }
         }
     }
+    
+            
+        
+
 
     public int lastCommandUpdate(int res)
     {
@@ -335,7 +347,7 @@ public class Shell
                 string variable = tokens[0];
                 try
                 {
-                    addToMemory(variable, value);
+                    addToMemoryOrUpdate(variable, value);
                     return 0;
                 }
                 catch
@@ -365,16 +377,12 @@ public class Shell
 
     public string echoCommand(string[] args)
     {
-        string res = "";
-        if (args.Length > 1)
+        string res = string.Empty;
+        foreach (var arg in args)
         {
-            for (int i = 0; i < args.Length - 1; i++)
-            {
-                res += args[i] + " ";
-            }
+            res += arg + " ";
         }
-        res += args[args.Length - 1];
-
+        res = res.Trim();
         return res;
     }
 
@@ -469,8 +477,7 @@ public class Shell
                 {
                     try
                     {
-                        args = argsParser(args);
-                        Console.WriteLine(echoCommand(args));
+                        Console.WriteLine(echoCommand(argsParser(args)));
 
 
                         return 0;
