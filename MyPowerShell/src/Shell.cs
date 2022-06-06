@@ -6,8 +6,10 @@ public class Shell
 {
     //Память реализованна в виде словаря
     private Dictionary<string, string> memory = new Dictionary<string, string>();
+
     //Запоминаем последнюю комманду независимо от обновления памяти
     private int lastCommandProgress = 0;
+
     //Переменная для передачи о завершении работы
     private bool polling = true;
 
@@ -15,7 +17,7 @@ public class Shell
     {
         return memory;
     }
-    
+
     public void addToMemoryOrUpdate(string variable, string value)
     {
         //Изменяем значение переменной, если уже созданна
@@ -39,7 +41,7 @@ public class Shell
     {
         return polling;
     }
-    
+
     //Запуская оболочку в ее памяти всегда должена быть переменная $? по условия задания 
     public Shell()
     {
@@ -79,21 +81,21 @@ public class Shell
         }
     }
 
-    
+
     public void ProcessLine(string line)
     {
         if (line.Length > 0)
         {
             line = Regex.Replace(line, " {2,}", " ").Trim();
             //Разделяем строку на последовательность
-            string[] woConnectorsCommands = Regex.Split(line, @"(;)|(&&)|(\|\|)");
+            string[] woConnectorsCommands = Regex.Split(line, @"( ;)|( &&)|( \|\|)");
             bool skipNext = false;
             foreach (var commandWithRedicters in woConnectorsCommands)
             {
-                if (commandWithRedicters == "&&" || commandWithRedicters == "||" || commandWithRedicters == ";")
+                if (commandWithRedicters == " &&" || commandWithRedicters == " ||" || commandWithRedicters == " ;")
                 {
-                    if ((commandWithRedicters == "&&" && lastCommandProgress != 0) ||
-                        (commandWithRedicters == "||" && lastCommandProgress == 0))
+                    if ((commandWithRedicters == " &&" && lastCommandProgress != 0) ||
+                        (commandWithRedicters == " ||" && lastCommandProgress == 0))
                     {
                         //Пропускаем следующую команду, она будет защитана как неудачно завершенная
                         lastCommandUpdate(-1);
@@ -103,6 +105,7 @@ public class Shell
                     {
                         skipNext = false;
                     }
+
                     continue;
                 }
                 else if (!skipNext)
@@ -115,22 +118,23 @@ public class Shell
                     //Делим элементы предыдущего массива на подзадачи относительно ">>" или ">"
                     if (commandWithRedicters.IndexOf(">>") != -1)
                     {
-                        OutputCommands = commandWithRedicters.Split(">>");
+                        OutputCommands = commandWithRedicters.Split(" >>");
                         writePlus = true;
                     }
                     else
                     {
-                        OutputCommands = commandWithRedicters.Split(">");
+                        OutputCommands = commandWithRedicters.Split(" >");
                     }
 
                     if (OutputCommands.Length <= 2 && OutputCommands.Length > 0)
                     {
                         //Отделяем комманду от ее параметров, которые переданный в файле
-                        string[] InputCommands = OutputCommands[0].Split("<");
+                        string[] InputCommands = OutputCommands[0].Split(" <");
                         if (InputCommands.Length <= 2 && InputCommands.Length > 0)
                         {
                             //Проверка есть ли какая-нибудь комманда?
-                            InputCommands[0] = Regex.Replace(InputCommands[0], " {2,}", " ").Trim();
+                            InputCommands[0] = Regex.Replace(InputCommands[0], " {2,}", " ").Trim().Replace("/;", ";")
+                                .Replace("/&&", "&&").Replace("/||", "||").Replace("/>", ">");
                             if (InputCommands[0] == String.Empty || InputCommands[0] == " ")
                             {
                                 lastCommandUpdate(0);
@@ -236,9 +240,6 @@ public class Shell
             }
         }
     }
-    
-            
-        
 
 
     public int lastCommandUpdate(int res)
@@ -283,6 +284,7 @@ public class Shell
                 res[1] += Regex.Replace(line, " {2,}", " ").Trim().Split(' ').Length;
                 res[0]++;
             }
+
             res[2] = File.ReadAllBytes(path).Length;
         }
         else
@@ -382,6 +384,7 @@ public class Shell
         {
             res += arg + " ";
         }
+
         res = res.Trim();
         return res;
     }
@@ -446,7 +449,7 @@ public class Shell
                 }
 
                 string[] args = {tokens[1]};
-                string path= argsParser(args)[0];
+                string path = argsParser(args)[0];
                 if (File.Exists(path))
                 {
                     try
@@ -473,6 +476,7 @@ public class Shell
                 {
                     args[i] = tokens[i + 1];
                 }
+
                 if (args.Length > 0)
                 {
                     try
@@ -526,7 +530,7 @@ public class Shell
             else if (File.Exists(argsParser(tokens)[0]))
             {
                 string[] arg = {tokens[0]};
-                
+
                 string path = argsParser(arg)[0];
                 string[] ScriptCommands = File.ReadAllLines(path);
                 if (ScriptCommands.Length > 0)
@@ -539,7 +543,7 @@ public class Shell
                 }
 
                 try
-                { 
+                {
                     //Если не скрипт, то запускаем файл
                     string[] args = argsParser(tokens);
                     executeFile(path, args, newOut);
